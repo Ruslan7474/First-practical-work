@@ -1,0 +1,11 @@
+﻿{% extends 'base.html' %}
+{% block title %}{{ i18n.booking_success_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+<section class="success">
+    <h1>{{ i18n.booking_success_h1 }}</h1>
+    <p>{{ i18n.booking_success_line1 }} "{{ play.title }}".</p>
+    <p>{{ i18n.booking_success_line2 }}</p>
+    <a class="btn" href="{% url 'home' %}">{{ i18n.booking_back }}</a>
+</section>
+{% endblock %}

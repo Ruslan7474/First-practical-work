@@ -1,0 +1,29 @@
+﻿{% extends 'base.html' %}
+{% block title %}{{ i18n.theatre_home_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>{{ i18n.theatre_home_h1 }}</h1>
+    <p>{{ i18n.theatre_home_text }}</p>
+</section>
+
+<section class="plays-grid">
+    {% for play in plays %}
+        <article class="card">
+            {% if play.poster %}
+                <img src="{{ play.poster.url }}" alt="{{ play.title }}">
+            {% elif play.poster_url %}
+                <img src="{{ play.poster_url }}" alt="{{ play.title }}">
+            {% endif %}
+            <div class="card-body">
+                <h2>{{ play.title }}</h2>
+                <p class="meta">{{ play.duration_minutes }} {{ i18n.minutes }} | {{ play.age_limit }}</p>
+                <a class="btn" href="/plays/{{ play.id }}/">{{ i18n.theatre_more_tickets }}</a>
+            </div>
+        </article>
+    {% empty %}
+        <p>{{ i18n.theatre_no_shows }}</p>
+    {% endfor %}
+</section>
+{% endblock %}
+

@@ -1,0 +1,645 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ i18n.home_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+{% if showcase_items_exist %}
+<section class="showcase-section" id="showcaseSection">
+    <div class="container py-5">
+        <div class="showcase-head">
+            <h2 class="showcase-title">{{ i18n.home_today_sessions }}</h2>
+        </div>
+
+        <div class="shows-carousel">
+            <button class="shows-arrow shows-arrow-prev" id="showsPrev" type="button" aria-label="{{ i18n.home_prev }}">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+
+            <div class="shows-viewport">
+                <div class="shows-track" id="showsTrack">
+                {% for item in showcase_items %}
+                    <article class="show-card{% if item.play.title == 'Ромео и Джульетта' %} show-card-highlighted{% endif %}" data-show-date="{% if item.display_date %}{{ item.display_date|date:'Y-m-d' }}{% endif %}" data-show-cats="{% for cat in item.play.categories.all %}{{ cat.id }}{% if not forloop.last %},{% endif %}{% endfor %}" data-show-hours="{% for st in item.play.showtimes.all %}{{ st.starts_at|date:'H' }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                        <div class="show-card-image">
+                            {% if item.image %}
+                                <img src="{{ item.image.url }}" alt="{{ item.play.title }}">
+                            {% elif item.image_url %}
+                                <img src="{{ item.image_url }}" alt="{{ item.play.title }}">
+                            {% elif item.play.poster %}
+                                <img src="{{ item.play.poster.url }}" alt="{{ item.play.title }}">
+                            {% elif item.play.poster_url %}
+                                <img src="{{ item.play.poster_url }}" alt="{{ item.play.title }}">
+                            {% else %}
+                                <div class="show-card-placeholder"></div>
+                            {% endif %}
+                        </div>
+                        <div class="show-card-overlay">
+                            <span class="show-card-title">{{ item.play.title }}</span>
+                            <a href="/plays/{{ item.play.id }}/" class="show-card-buy">{{ i18n.home_buy }}</a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+            </div>
+
+            <button class="shows-arrow shows-arrow-next" id="showsNext" type="button" aria-label="{{ i18n.home_next }}">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </div>
+
+        <p class="shows-empty" id="showsEmpty" hidden>{{ i18n.home_empty_filtered }}</p>
+    </div>
+</section>
+{% endif %}
+
+<section class="show-filters-section">
+    <div class="container py-3">
+        <div class="filters-row" id="filtersRow">
+            <button class="filter-chip" type="button" id="openFilters">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+            </button>
+            <button class="filter-chip" type="button" id="toggleDateRail">{{ i18n.filter_date }} ▾</button>
+            {% if categories %}
+                <button class="filter-chip" type="button" id="toggleCategoryPanel">{{ i18n.filter_category }} ▾</button>
+            {% endif %}
+            <button class="filter-chip" type="button" id="filterToday">{{ i18n.filter_today }}</button>
+            <button class="filter-chip" type="button" id="filterWeekend">{{ i18n.filter_weekend }}</button>
+        </div>
+
+        {% if categories %}
+        <div class="category-panel" id="categoryPanel" hidden>
+            <h4>{{ i18n.filter_category }}</h4>
+            <div class="category-chips" id="categoryChipsInline">
+                {% for category in categories %}
+                    <button class="filter-chip category-chip{% if forloop.counter > 10 %} extra-cat hidden-cat{% endif %}" type="button" data-cat-id="{{ category.id }}">{{ category.name }}</button>
+                {% endfor %}
+            </div>
+            {% if categories|length > 10 %}
+                <button class="category-more" type="button" id="categoryMoreInline">{{ i18n.filter_more }}</button>
+            {% endif %}
+            <div class="price-actions">
+                <button class="price-clear" type="button" id="categoryClearInline">{{ i18n.filter_clear }}</button>
+                <button class="price-apply" type="button" id="categoryApplyInline">{{ i18n.filter_apply }}</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="date-rail" id="dateRail" hidden>
+            <button class="date-next" type="button" id="dateScrollPrev">‹</button>
+            <div class="date-days" id="dateDays"></div>
+            <button class="date-next" type="button" id="dateScrollNext">›</button>
+        </div>
+    </div>
+</section>
+
+<section class="sessions-section">
+    <div class="container pb-5">
+        {% for row in sessions %}
+            <article class="session-row"
+                data-session-dates="{% for d in row.date_keys %}{{ d }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                data-session-hours="{% for h in row.hour_keys %}{{ h }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                data-session-cats="{% for cat_id in row.cat_ids %}{{ cat_id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+                <div class="session-poster">
+                    {% if row.play.poster %}
+                        <img src="{{ row.play.poster.url }}" alt="{{ row.play.title }}">
+                    {% elif row.play.poster_url %}
+                        <img src="{{ row.play.poster_url }}" alt="{{ row.play.title }}">
+                    {% else %}
+                        <div class="session-poster-placeholder"></div>
+                    {% endif %}
+                </div>
+                <div class="session-body">
+                    <div class="session-top">
+                        <h3><a class="session-play-link" href="/plays/{{ row.play.id }}/">{{ row.play.title }}</a></h3>
+                        <div class="session-meta">
+                            <span class="badge-age">{{ row.play.age_limit }}</span>
+                            {% for category in row.play.categories.all %}
+                                <span>{{ category.name }}</span>
+                            {% empty %}
+                                <span>—</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% if row.play.cast %}<p class="session-line">{{ i18n.cast }}: {{ row.play.cast }}</p>{% endif %}
+                    {% if row.play.premiere_date %}<p class="session-line">{{ i18n.premiere }}: {{ row.play.premiere_date|date:"d.m.Y" }}</p>{% endif %}
+
+                    {% for hall, hall_times in row.halls %}
+                        <div class="hall-row">
+                            <div class="hall-name">{{ hall }}</div>
+                            <div class="hall-times">
+                                {% for st in hall_times %}
+                                    <span class="time-chip">{{ st.starts_at|date:"H:i" }} <small>{{ st.price|floatformat:0 }} {{ i18n.currency_som }}</small></span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </article>
+        {% empty %}
+            <p class="text-light-emphasis">{{ i18n.home_today_empty }}</p>
+        {% endfor %}
+        <p class="text-light-emphasis" id="sessionsEmpty" hidden>{{ i18n.home_empty_filtered }}</p>
+    </div>
+</section>
+
+<div class="filters-modal" id="filtersModal" hidden>
+    <div class="filters-modal-card">
+        <button class="filters-close" type="button" id="closeFilters">✕</button>
+        <h3>{{ i18n.filter_date_time }}</h3>
+        <button class="filter-chip" type="button" id="modalDateToggle">{{ i18n.filter_date }} ▾</button>
+        <div class="modal-date-picker" id="modalDatePicker" hidden>
+            <h4>{{ i18n.filter_date_range }}</h4>
+            <div class="modal-date-head">
+                <strong id="modalMonthLabel"></strong>
+                <div class="modal-date-nav">
+                    <button type="button" id="modalMonthPrev">‹</button>
+                    <button type="button" id="modalMonthNext">›</button>
+                </div>
+            </div>
+            <div class="modal-weekdays" id="modalWeekdays"></div>
+            <div class="modal-days-grid" id="modalDaysGrid"></div>
+            <div class="price-actions">
+                <button class="price-clear" type="button" id="modalDateClear">{{ i18n.filter_clear }}</button>
+                <button class="price-apply" type="button" id="modalDateApply">{{ i18n.filter_apply }}</button>
+            </div>
+        </div>
+
+        <div class="filters-group">
+            <button class="filter-chip" type="button" id="filterDaytime">☼ {{ i18n.filter_matinee }}</button>
+            <button class="filter-chip" type="button" id="filterEvening">☾ {{ i18n.filter_evening }}</button>
+        </div>
+
+        {% if categories %}
+            <h3>{{ i18n.filter_category }}</h3>
+            <div class="filters-group" id="categoryChipsModal">
+                {% for category in categories %}
+                    <button class="filter-chip category-chip{% if forloop.counter > 10 %} extra-cat hidden-cat{% endif %}" type="button" data-cat-id="{{ category.id }}">{{ category.name }}</button>
+                {% endfor %}
+            </div>
+            {% if categories|length > 10 %}
+                <button class="category-more" type="button" id="categoryMoreModal">{{ i18n.filter_more }}</button>
+            {% endif %}
+        {% endif %}
+
+        <div class="filters-actions">
+            <button class="filters-clear" type="button" id="clearFilters">{{ i18n.filter_clear_all }}</button>
+            <button class="filters-apply" type="button" id="applyFilters">{{ i18n.filter_apply_all }}</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const track = document.getElementById("showsTrack");
+        const next = document.getElementById("showsNext");
+        const prev = document.getElementById("showsPrev");
+        const empty = document.getElementById("showsEmpty");
+        const showcaseSection = document.getElementById("showcaseSection");
+        const openFilters = document.getElementById("openFilters");
+        const closeFilters = document.getElementById("closeFilters");
+        const modal = document.getElementById("filtersModal");
+        const toggleDateRail = document.getElementById("toggleDateRail");
+        const dateRail = document.getElementById("dateRail");
+        const dateDays = document.getElementById("dateDays");
+        const dateScrollPrev = document.getElementById("dateScrollPrev");
+        const dateScrollNext = document.getElementById("dateScrollNext");
+        const filterToday = document.getElementById("filterToday");
+        const filterWeekend = document.getElementById("filterWeekend");
+        const clearFilters = document.getElementById("clearFilters");
+        const applyFilters = document.getElementById("applyFilters");
+        const toggleCategoryPanel = document.getElementById("toggleCategoryPanel");
+        const categoryPanel = document.getElementById("categoryPanel");
+        const categoryMoreInline = document.getElementById("categoryMoreInline");
+        const categoryMoreModal = document.getElementById("categoryMoreModal");
+        const categoryClearInline = document.getElementById("categoryClearInline");
+        const categoryApplyInline = document.getElementById("categoryApplyInline");
+        const modalDateToggle = document.getElementById("modalDateToggle");
+        const modalDatePicker = document.getElementById("modalDatePicker");
+        const modalMonthLabel = document.getElementById("modalMonthLabel");
+        const modalMonthPrev = document.getElementById("modalMonthPrev");
+        const modalMonthNext = document.getElementById("modalMonthNext");
+        const modalDaysGrid = document.getElementById("modalDaysGrid");
+        const modalDateClear = document.getElementById("modalDateClear");
+        const modalDateApply = document.getElementById("modalDateApply");
+        const modalWeekdays = document.getElementById("modalWeekdays");
+        const filterDaytime = document.getElementById("filterDaytime");
+        const filterEvening = document.getElementById("filterEvening");
+
+        const hasCarousel = Boolean(track && next && prev);
+
+        let isAnimating = false;
+        const cards = hasCarousel ? Array.from(track.querySelectorAll(".show-card")) : [];
+        const sessionRows = Array.from(document.querySelectorAll(".session-row"));
+        const sessionsEmpty = document.getElementById("sessionsEmpty");
+
+        let selectedDateMode = "all";
+        let selectedTimeMode = "all";
+        let selectedDate = null;
+        let modalDateDraft = null;
+        const selectedCategories = new Set();
+        let modalCalendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+        const monthNames = "{{ i18n.month_names|escapejs }}".split("|");
+        const week = "{{ i18n.week_names|escapejs }}".split("|");
+        const weekMondayFirst = "{{ i18n.week_names_monday_first|escapejs }}".split("|");
+        const hasSearchQuery = "{{ search_query|default:''|escapejs }}".trim().length > 0;
+
+        const formatSom = (value) => `${new Intl.NumberFormat("{{ i18n.locale_code }}").format(value)} {{ i18n.currency_som }}`;
+
+        const toDateKey = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, "0");
+            const d = String(date.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        };
+
+        const getStep = () => {
+            if (!track) return 0;
+            const card = track.querySelector(".show-card:not([hidden])") || track.querySelector(".show-card");
+            if (!card) return 0;
+            const styles = window.getComputedStyle(track);
+            const gap = parseFloat(styles.gap || "0") || 0;
+            return card.getBoundingClientRect().width + gap;
+        };
+
+        const clearDateButtons = () => {
+            Array.from(dateDays.querySelectorAll(".day-btn")).forEach((btn) => btn.classList.remove("active"));
+        };
+
+        const syncCategoryButtons = () => {
+            document.querySelectorAll(".category-chip").forEach((btn) => {
+                const id = btn.dataset.catId;
+                btn.classList.toggle("active", selectedCategories.has(id));
+            });
+        };
+
+        const matchesDate = (cardDate) => {
+            if (selectedDateMode === "all") return true;
+            if (selectedDateMode === "exact") return cardDate === selectedDate;
+            if (selectedDateMode === "today") return cardDate === toDateKey(new Date());
+            if (selectedDateMode === "weekend") {
+                if (!cardDate) return false;
+                const d = new Date(cardDate + "T00:00:00");
+                const wd = d.getDay();
+                return wd === 0 || wd === 6;
+            }
+            return true;
+        };
+
+        const matchesPrice = () => true;
+
+        const matchesCategory = (catCsv) => {
+            if (selectedCategories.size === 0) return true;
+            if (!catCsv) return false;
+            const cardSet = new Set(catCsv.split(",").filter(Boolean));
+            for (const id of selectedCategories) {
+                if (cardSet.has(id)) return true;
+            }
+            return false;
+        };
+
+        const hasActiveFilters = () => (
+            selectedDateMode !== "all" ||
+            selectedTimeMode !== "all" ||
+            selectedCategories.size > 0
+        );
+
+        const syncShowcaseVisibility = () => {
+            if (!showcaseSection) return;
+            showcaseSection.hidden = hasSearchQuery || hasActiveFilters();
+        };
+
+        const syncQuickDateButtons = () => {
+            if (!filterToday || !filterWeekend) return;
+            filterToday.classList.toggle("filter-chip-dark", selectedDateMode === "today");
+            filterWeekend.classList.toggle("filter-chip-dark", selectedDateMode === "weekend");
+        };
+
+        const isDaytimeHour = (hour) => hour >= 7 && hour <= 17;
+        const isEveningHour = (hour) => hour >= 18 || hour <= 6;
+
+        const matchesTime = (hoursCsv) => {
+            if (selectedTimeMode === "all") return true;
+            if (!hoursCsv) return false;
+            const hours = hoursCsv
+                .split(",")
+                .filter(Boolean)
+                .map((v) => Number(v))
+                .filter((v) => Number.isFinite(v));
+            if (hours.length === 0) return false;
+            if (selectedTimeMode === "day") return hours.some(isDaytimeHour);
+            if (selectedTimeMode === "evening") return hours.some(isEveningHour);
+            return true;
+        };
+
+        const matchesAnyDate = (dateCsv) => {
+            if (!dateCsv) return selectedDateMode === "all";
+            const allDates = dateCsv.split(",").filter(Boolean);
+            if (selectedDateMode === "all") return allDates.length > 0;
+            return allDates.some((d) => matchesDate(d));
+        };
+
+        const matchesPriceRange = () => true;
+
+        const applyAllFilters = () => {
+            cards.forEach((card) => {
+                const cardDate = card.dataset.showDate || "";
+                const cats = card.dataset.showCats || "";
+                const hours = card.dataset.showHours || "";
+                card.hidden = !(matchesDate(cardDate) && matchesTime(hours) && matchesPrice() && matchesCategory(cats));
+            });
+            const hasVisible = cards.some((card) => !card.hidden);
+            if (empty) {
+                empty.hidden = hasVisible || cards.length === 0;
+            }
+
+            sessionRows.forEach((row) => {
+                const dates = row.dataset.sessionDates || "";
+                const cats = row.dataset.sessionCats || "";
+                const hours = row.dataset.sessionHours || "";
+                row.hidden = !(matchesAnyDate(dates) && matchesTime(hours) && matchesPriceRange() && matchesCategory(cats));
+            });
+            if (sessionsEmpty) {
+                const hasVisibleSessions = sessionRows.some((row) => !row.hidden);
+                sessionsEmpty.hidden = hasVisibleSessions;
+            }
+            syncShowcaseVisibility();
+        };
+
+        const renderDateButtons = () => {
+            const start = new Date();
+            const frag = document.createDocumentFragment();
+
+            for (let i = 0; i < 730; i += 1) {
+                const dt = new Date(start);
+                dt.setDate(start.getDate() + i);
+                if (dt.getDate() === 1 || i === 0) {
+                    const marker = document.createElement("div");
+                    marker.className = "month-marker";
+                    marker.textContent = `${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+                    frag.appendChild(marker);
+                }
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "day-btn";
+                btn.dataset.date = toDateKey(dt);
+                btn.innerHTML = `<span>${dt.getDate()}</span><small>${week[dt.getDay()]}</small>`;
+                btn.addEventListener("click", () => {
+                    selectedDateMode = "exact";
+                    selectedDate = btn.dataset.date;
+                    clearDateButtons();
+                    btn.classList.add("active");
+                    applyAllFilters();
+                });
+                frag.appendChild(btn);
+            }
+
+            dateDays.innerHTML = "";
+            dateDays.appendChild(frag);
+        };
+
+        const renderModalCalendar = () => {
+            if (!modalDaysGrid || !modalMonthLabel) return;
+            const firstDay = new Date(modalCalendarMonth.getFullYear(), modalCalendarMonth.getMonth(), 1);
+            const lastDay = new Date(modalCalendarMonth.getFullYear(), modalCalendarMonth.getMonth() + 1, 0);
+            const startOffset = (firstDay.getDay() + 6) % 7;
+            modalMonthLabel.textContent = `${firstDay.toLocaleString("ru-RU", { month: "long" })} ${firstDay.getFullYear()}`;
+            modalDaysGrid.innerHTML = "";
+
+            for (let i = 0; i < startOffset; i += 1) {
+                const pad = document.createElement("span");
+                pad.className = "modal-day-pad";
+                modalDaysGrid.appendChild(pad);
+            }
+
+            for (let d = 1; d <= lastDay.getDate(); d += 1) {
+                const dt = new Date(modalCalendarMonth.getFullYear(), modalCalendarMonth.getMonth(), d);
+                const key = toDateKey(dt);
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "modal-day-btn";
+                if (modalDateDraft === key) btn.classList.add("active");
+                btn.textContent = String(d);
+                btn.addEventListener("click", () => {
+                    modalDateDraft = key;
+                    renderModalCalendar();
+                });
+                modalDaysGrid.appendChild(btn);
+            }
+        };
+
+        const renderModalWeekdays = () => {
+            if (!modalWeekdays) return;
+            modalWeekdays.innerHTML = "";
+            weekMondayFirst.forEach((name) => {
+                const span = document.createElement("span");
+                span.textContent = name;
+                modalWeekdays.appendChild(span);
+            });
+        };
+
+        if (hasCarousel) {
+            next.addEventListener("click", () => {
+                if (isAnimating) return;
+                const step = getStep();
+                if (!step) return;
+                isAnimating = true;
+                track.style.transition = "transform 350ms ease";
+                track.style.transform = `translateX(-${step}px)`;
+                track.addEventListener("transitionend", () => {
+                    track.style.transition = "none";
+                    track.appendChild(track.firstElementChild);
+                    track.style.transform = "translateX(0)";
+                    requestAnimationFrame(() => {
+                        isAnimating = false;
+                    });
+                }, { once: true });
+            });
+
+            prev.addEventListener("click", () => {
+                if (isAnimating) return;
+                const step = getStep();
+                if (!step) return;
+                isAnimating = true;
+                track.style.transition = "none";
+                track.insertBefore(track.lastElementChild, track.firstElementChild);
+                track.style.transform = `translateX(-${step}px)`;
+                requestAnimationFrame(() => {
+                    track.style.transition = "transform 350ms ease";
+                    track.style.transform = "translateX(0)";
+                });
+                track.addEventListener("transitionend", () => {
+                    track.style.transition = "none";
+                    requestAnimationFrame(() => {
+                        isAnimating = false;
+                    });
+                }, { once: true });
+            });
+        }
+
+        toggleDateRail?.addEventListener("click", () => {
+            dateRail.hidden = !dateRail.hidden;
+        });
+
+        toggleCategoryPanel?.addEventListener("click", () => {
+            if (categoryPanel) categoryPanel.hidden = !categoryPanel.hidden;
+        });
+
+        dateScrollPrev?.addEventListener("click", () => {
+            dateDays.scrollBy({ left: -500, behavior: "smooth" });
+        });
+
+        dateScrollNext?.addEventListener("click", () => {
+            dateDays.scrollBy({ left: 500, behavior: "smooth" });
+        });
+
+        filterToday?.addEventListener("click", () => {
+            selectedDateMode = selectedDateMode === "today" ? "all" : "today";
+            selectedDate = null;
+            clearDateButtons();
+            syncQuickDateButtons();
+            applyAllFilters();
+        });
+
+        filterWeekend?.addEventListener("click", () => {
+            selectedDateMode = selectedDateMode === "weekend" ? "all" : "weekend";
+            selectedDate = null;
+            clearDateButtons();
+            syncQuickDateButtons();
+            applyAllFilters();
+        });
+
+        modalDateToggle?.addEventListener("click", () => {
+            modalDatePicker.hidden = !modalDatePicker.hidden;
+            if (!modalDatePicker.hidden) {
+                renderModalCalendar();
+            }
+        });
+
+        modalMonthPrev?.addEventListener("click", () => {
+            modalCalendarMonth = new Date(modalCalendarMonth.getFullYear(), modalCalendarMonth.getMonth() - 1, 1);
+            renderModalCalendar();
+        });
+
+        modalMonthNext?.addEventListener("click", () => {
+            modalCalendarMonth = new Date(modalCalendarMonth.getFullYear(), modalCalendarMonth.getMonth() + 1, 1);
+            renderModalCalendar();
+        });
+
+        modalDateApply?.addEventListener("click", () => {
+            if (modalDateDraft) {
+                selectedDateMode = "exact";
+                selectedDate = modalDateDraft;
+                clearDateButtons();
+                const railBtn = dateDays.querySelector(`[data-date='${selectedDate}']`);
+                if (railBtn) railBtn.classList.add("active");
+            }
+            syncQuickDateButtons();
+            applyAllFilters();
+            modalDatePicker.hidden = true;
+        });
+
+        modalDateClear?.addEventListener("click", () => {
+            modalDateDraft = null;
+            selectedDateMode = "all";
+            selectedDate = null;
+            clearDateButtons();
+            syncQuickDateButtons();
+            applyAllFilters();
+            renderModalCalendar();
+        });
+
+        filterDaytime?.addEventListener("click", () => {
+            selectedTimeMode = selectedTimeMode === "day" ? "all" : "day";
+            filterDaytime.classList.toggle("filter-chip-dark", selectedTimeMode === "day");
+            filterEvening?.classList.remove("filter-chip-dark");
+            applyAllFilters();
+        });
+
+        filterEvening?.addEventListener("click", () => {
+            selectedTimeMode = selectedTimeMode === "evening" ? "all" : "evening";
+            filterEvening.classList.toggle("filter-chip-dark", selectedTimeMode === "evening");
+            filterDaytime?.classList.remove("filter-chip-dark");
+            applyAllFilters();
+        });
+
+        document.querySelectorAll(".category-chip").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const id = btn.dataset.catId;
+                if (!id) return;
+                if (selectedCategories.has(id)) {
+                    selectedCategories.delete(id);
+                } else {
+                    selectedCategories.add(id);
+                }
+                syncCategoryButtons();
+            });
+        });
+
+        categoryMoreInline?.addEventListener("click", () => {
+            document.querySelectorAll("#categoryChipsInline .extra-cat").forEach((el) => el.classList.remove("hidden-cat"));
+            categoryMoreInline.hidden = true;
+        });
+
+        categoryMoreModal?.addEventListener("click", () => {
+            document.querySelectorAll("#categoryChipsModal .extra-cat").forEach((el) => el.classList.remove("hidden-cat"));
+            categoryMoreModal.hidden = true;
+        });
+
+        categoryClearInline?.addEventListener("click", () => {
+            selectedCategories.clear();
+            syncCategoryButtons();
+            applyAllFilters();
+        });
+
+        categoryApplyInline?.addEventListener("click", () => {
+            applyAllFilters();
+            if (categoryPanel) categoryPanel.hidden = true;
+        });
+
+        clearFilters?.addEventListener("click", () => {
+            selectedDateMode = "all";
+            selectedTimeMode = "all";
+            selectedDate = null;
+            clearDateButtons();
+            syncQuickDateButtons();
+            filterDaytime?.classList.remove("filter-chip-dark");
+            filterEvening?.classList.remove("filter-chip-dark");
+            selectedCategories.clear();
+            syncCategoryButtons();
+            applyAllFilters();
+        });
+
+        applyFilters?.addEventListener("click", () => {
+            applyAllFilters();
+            modal.hidden = true;
+        });
+
+        openFilters?.addEventListener("click", () => {
+            modal.hidden = false;
+        });
+
+        closeFilters?.addEventListener("click", () => {
+            modal.hidden = true;
+        });
+
+        modal?.addEventListener("click", (e) => {
+            if (e.target === modal) {
+                modal.hidden = true;
+            }
+        });
+
+        renderDateButtons();
+        renderModalWeekdays();
+        syncQuickDateButtons();
+        syncCategoryButtons();
+        applyAllFilters();
+    })();
+</script>
+{% endblock %}

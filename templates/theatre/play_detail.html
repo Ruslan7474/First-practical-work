@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% block title %}{{ play.title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+<section class="play-detail-page">
+    <div class="container py-4 py-lg-5">
+        <a class="play-back-link" href="{% url 'home' %}">{{ i18n.theatre_back }}</a>
+
+        <div class="play-hero-grid">
+            <div class="play-hero-main">
+                <div class="play-hero-main-inner">
+                    <h1 class="play-detail-title">{{ play.title }}</h1>
+                    <button class="play-buy-btn" type="button" data-open-seat-modal {% if not upcoming_showtimes %}disabled{% endif %}>{{ i18n.buy_ticket }}</button>
+                </div>
+            </div>
+            <div class="play-hero-media">
+                {% if play.poster %}
+                    <img class="play-detail-poster" src="{{ play.poster.url }}" alt="{{ play.title }}">
+                {% elif play.poster_url %}
+                    <img class="play-detail-poster" src="{{ play.poster_url }}" alt="{{ play.title }}">
+                {% else %}
+                    <div class="play-detail-poster-placeholder"></div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="play-info-grid">
+            <section class="play-description-card">
+                <h2>{{ i18n.theatre_description }}</h2>
+                {% if play_description_html %}
+                    <div class="play-description-text is-collapsed" data-description-text>{{ play_description_html|safe }}</div>
+                    <button class="play-description-toggle" type="button" data-description-toggle hidden>Читать дальше</button>
+                {% else %}
+                    <div class="play-description-text">{{ i18n.theatre_description_empty }}</div>
+                {% endif %}
+            </section>
+
+            <aside class="play-facts-card">
+                <div class="play-fact-row">
+                    <span>{{ i18n.theatre_duration }}</span>
+                    <strong>{% if play.duration_minutes %}{{ play.duration_minutes }} {{ i18n.minutes }}{% else %}Не определен{% endif %}</strong>
+                </div>
+                <div class="play-fact-row">
+                    <span>Режиссер</span>
+                    <strong>{{ play.director|default:"Не определен" }}</strong>
+                </div>
+                <div class="play-fact-row">
+                    <span>{{ i18n.theatre_hall }}</span>
+                    <strong>{% if play.hall %}{{ play.hall }}{% else %}Не определен{% endif %}</strong>
+                </div>
+            </aside>
+        </div>
+
+        <section class="play-showtimes-list" id="playShowtimes">
+            <h2>{{ i18n.theatre_nearest }}</h2>
+            {% if upcoming_showtimes and not has_real_upcoming_showtimes %}
+                <p class="play-showtimes-note">Активных будущих показов сейчас нет, поэтому для теста показаны доступные сеансы из базы.</p>
+            {% endif %}
+            <div class="play-showtimes-chips">
+                {% for show in upcoming_showtimes %}
+                    <button class="play-show-chip play-show-seat-trigger" type="button" data-showtime-trigger="{{ show.id }}">
+                        <span>{{ show.starts_at|date:"d.m H:i" }}</span>
+                        <strong>{% if show.price %}{{ show.price }} {{ i18n.currency_som }}{% else %}Не определен{% endif %}</strong>
+                    </button>
+                {% empty %}
+                    <p class="mb-0">{{ i18n.theatre_no_active }}</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</section>
+
+{% if seat_maps %}
+    {{ seat_maps|json_script:"seat-map-data" }}
+    <script id="seat-reserve-url" type="application/json">"/showtimes/__SHOWTIME_ID__/reserve-seats/"</script>
+    <div class="seat-modal" data-seat-modal hidden>
+        <div class="seat-modal-backdrop" data-close-seat-modal></div>
+        <div class="seat-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="seatModalTitle">
+            <div class="seat-modal-head">
+                <div>
+                    <h2 id="seatModalTitle">Выбор мест</h2>
+                    <p class="seat-modal-subtitle" data-seat-modal-meta></p>
+                </div>
+                <button class="seat-modal-close" type="button" data-close-seat-modal aria-label="Закрыть">×</button>
+            </div>
+            <div class="seat-showtime-tabs" data-seat-showtime-tabs></div>
+            <div class="seat-legend">
+                <span><i class="seat-dot seat-dot-free"></i> Свободно</span>
+                <span><i class="seat-dot seat-dot-selected"></i> Выбрано</span>
+                <span><i class="seat-dot seat-dot-reserved"></i> Занято</span>
+            </div>
+            <div class="seat-grid-wrap">
+                <div class="seat-grid-shell" data-seat-grid></div>
+                <div class="seat-stage">Сцена</div>
+            </div>
+            <div class="seat-modal-footer">
+                <div class="seat-selection-info">
+                    <div>Выбрано мест: <strong data-seat-count>0</strong></div>
+                    <div>Сумма: <strong data-seat-total>0</strong> сом</div>
+                </div>
+                <button class="play-buy-btn" type="button" data-reserve-seats>Забронировать места</button>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const text = document.querySelector("[data-description-text]");
+        const toggle = document.querySelector("[data-description-toggle]");
+        if (text && toggle) {
+            const updateToggle = () => {
+                if (!text.classList.contains("is-expanded")) {
+                    text.classList.add("is-collapsed");
+                }
+                const needsToggle = text.scrollHeight > text.clientHeight + 8 || text.classList.contains("is-expanded");
+                toggle.hidden = !needsToggle;
+            };
+
+            updateToggle();
+            window.addEventListener("resize", updateToggle);
+            toggle.addEventListener("click", () => {
+                const expanded = text.classList.toggle("is-expanded");
+                text.classList.toggle("is-collapsed", !expanded);
+                toggle.textContent = expanded ? "Свернуть" : "Читать дальше";
+                updateToggle();
+            });
+        }
+
+        const modal = document.querySelector("[data-seat-modal]");
+        if (!modal) {
+            return;
+        }
+
+        const modalMeta = modal.querySelector("[data-seat-modal-meta]");
+        const grid = modal.querySelector("[data-seat-grid]");
+        const tabs = modal.querySelector("[data-seat-showtime-tabs]");
+        const countNode = modal.querySelector("[data-seat-count]");
+        const totalNode = modal.querySelector("[data-seat-total]");
+        const reserveButton = modal.querySelector("[data-reserve-seats]");
+        const reserveUrlTemplate = JSON.parse(document.getElementById("seat-reserve-url").textContent);
+        const openButtons = document.querySelectorAll("[data-open-seat-modal], [data-showtime-trigger]");
+        const closeButtons = modal.querySelectorAll("[data-close-seat-modal]");
+        const seatMaps = JSON.parse(document.getElementById("seat-map-data").textContent);
+        const state = {
+            activeShowtimeId: seatMaps[0]?.id ?? null,
+            selected: [],
+            reservedByShowtime: Object.fromEntries(
+                seatMaps.map((show) => [
+                    String(show.id),
+                    new Set(show.reserved.map((seat) => `${seat.row}-${seat.seat}`)),
+                ])
+            ),
+        };
+
+        const getCookie = (name) => {
+            const match = document.cookie.split("; ").find((row) => row.startsWith(`${name}=`));
+            return match ? decodeURIComponent(match.split("=")[1]) : "";
+        };
+
+        const getActiveShowtime = () => seatMaps.find((item) => item.id === state.activeShowtimeId);
+
+        const getSeatSections = (size) => {
+            if (size >= 16) {
+                return [4, 8, 4];
+            }
+            if (size >= 10) {
+                return [3, 4, 3];
+            }
+            return [size];
+        };
+
+        const updateTotals = () => {
+            const active = getActiveShowtime();
+            const price = Number.parseFloat(active?.price ?? "0") || 0;
+            const totalValue = price * state.selected.length;
+            countNode.textContent = String(state.selected.length);
+            totalNode.textContent = active?.price ? String(totalValue) : "Не определен";
+            reserveButton.disabled = state.selected.length === 0;
+        };
+
+        const renderTabs = () => {
+            tabs.innerHTML = "";
+            seatMaps.forEach((show) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = `seat-showtime-tab${show.id === state.activeShowtimeId ? " is-active" : ""}`;
+                button.textContent = `${show.label} · ${show.price ? `${show.price} сом` : "Не определен"}`;
+                button.addEventListener("click", () => {
+                    state.activeShowtimeId = show.id;
+                    state.selected = [];
+                    renderTabs();
+                    renderGrid();
+                    updateTotals();
+                });
+                tabs.appendChild(button);
+            });
+        };
+
+        const renderGrid = () => {
+            const active = getActiveShowtime();
+            if (!active) {
+                return;
+            }
+
+            const reserved = state.reservedByShowtime[String(active.id)] ?? new Set();
+            modalMeta.textContent = `${active.hall} · ${active.label}`;
+            grid.innerHTML = "";
+
+            for (let row = active.size; row >= 1; row -= 1) {
+                const rowWrap = document.createElement("div");
+                rowWrap.className = "seat-row";
+                if (row === 5 || row === 10) {
+                    rowWrap.classList.add("seat-row-gap-after");
+                }
+
+                const rowLabelLeft = document.createElement("div");
+                rowLabelLeft.className = "seat-row-label";
+                rowLabelLeft.textContent = `Ряд ${row}`;
+                rowWrap.appendChild(rowLabelLeft);
+
+                const seatsWrap = document.createElement("div");
+                seatsWrap.className = "seat-row-seats";
+
+                let seatNumber = 1;
+                getSeatSections(active.size).forEach((sectionSize) => {
+                    const section = document.createElement("div");
+                    section.className = "seat-section";
+                    section.style.gridTemplateColumns = `repeat(${sectionSize}, var(--seat-size))`;
+
+                    for (let index = 0; index < sectionSize; index += 1) {
+                        const seat = seatNumber;
+                        const key = `${row}-${seat}`;
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.className = "seat-item";
+                        button.textContent = String(seat);
+
+                        if (reserved.has(key)) {
+                            button.classList.add("is-reserved");
+                            button.disabled = true;
+                        } else if (state.selected.some((item) => item.row === row && item.seat === seat)) {
+                            button.classList.add("is-selected");
+                        }
+
+                        button.addEventListener("click", () => {
+                            const selectedIndex = state.selected.findIndex((item) => item.row === row && item.seat === seat);
+                            if (selectedIndex >= 0) {
+                                state.selected.splice(selectedIndex, 1);
+                            } else {
+                                state.selected.push({ row, seat });
+                            }
+                            renderGrid();
+                            updateTotals();
+                        });
+
+                        section.appendChild(button);
+                        seatNumber += 1;
+                    }
+
+                    seatsWrap.appendChild(section);
+                });
+
+                rowWrap.appendChild(seatsWrap);
+
+                const rowLabelRight = document.createElement("div");
+                rowLabelRight.className = "seat-row-label seat-row-label-right";
+                rowLabelRight.textContent = `Ряд ${row}`;
+                rowWrap.appendChild(rowLabelRight);
+
+                grid.appendChild(rowWrap);
+            }
+        };
+
+        const openModal = (showtimeId) => {
+            if (showtimeId) {
+                state.activeShowtimeId = Number(showtimeId);
+            }
+            state.selected = [];
+            renderTabs();
+            renderGrid();
+            updateTotals();
+            modal.hidden = false;
+            document.body.style.overflow = "hidden";
+        };
+
+        const closeModal = () => {
+            modal.hidden = true;
+            document.body.style.overflow = "";
+        };
+
+        openButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                openModal(button.dataset.showtimeTrigger || state.activeShowtimeId);
+            });
+        });
+
+        closeButtons.forEach((button) => {
+            button.addEventListener("click", closeModal);
+        });
+
+        reserveButton.addEventListener("click", async () => {
+            const active = getActiveShowtime();
+            if (!active || state.selected.length === 0) {
+                return;
+            }
+
+            reserveButton.disabled = true;
+            try {
+                const response = await fetch(reserveUrlTemplate.replace("__SHOWTIME_ID__", String(active.id)), {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify({ seats: state.selected }),
+                });
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    window.alert("Часть мест уже занята. Обновите выбор.");
+                    if (Array.isArray(data.conflicts)) {
+                        const reserved = state.reservedByShowtime[String(active.id)];
+                        data.conflicts.forEach((seat) => reserved.add(`${seat.row}-${seat.seat}`));
+                    }
+                    state.selected = [];
+                    renderGrid();
+                    updateTotals();
+                    return;
+                }
+
+                const reserved = state.reservedByShowtime[String(active.id)];
+                data.reserved.forEach((seat) => reserved.add(`${seat.row}-${seat.seat}`));
+                state.selected = [];
+                renderGrid();
+                updateTotals();
+                window.alert("Места успешно забронированы.");
+            } catch (error) {
+                window.alert("Не удалось сохранить бронь. Попробуйте еще раз.");
+            } finally {
+                reserveButton.disabled = false;
+            }
+        });
+    })();
+</script>
+{% endblock %}

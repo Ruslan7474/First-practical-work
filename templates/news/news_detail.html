@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ event.title }} | {{ i18n.news_title }}{% endblock %}
+
+{% block content %}
+<section class="py-5 news-detail-page">
+    <div class="container">
+        <a href="{% url 'news:news_page' %}" class="news-back-link">{{ i18n.news_back }}</a>
+        <h1 class="text-center mb-4">{{ event.title }}</h1>
+
+        <div class="news-detail-media text-center mb-4">
+            {% if event.photo %}
+                <img src="{{ event.photo.url }}" class="img-fluid rounded" alt="{{ event.title }}">
+            {% elif event.photo_url %}
+                <img src="{{ event.photo_url }}" class="img-fluid rounded" alt="{{ event.title }}">
+            {% endif %}
+        </div>
+
+        <div class="news-detail-text mb-5">
+            {{ event.text|safe }}
+        </div>
+
+        {% if other_news %}
+        <section class="news-related mb-5">
+            <h2 class="mb-3">{{ i18n.news_other }}</h2>
+            <div class="news-related-wrap">
+                <button class="news-related-nav" type="button" id="newsRelatedPrev" aria-label="{{ i18n.home_prev }}">‹</button>
+                <div class="news-related-viewport">
+                    <div class="news-related-track" id="newsRelatedTrack">
+                        {% for item in other_news %}
+                            <a href="{% url 'news:news_detail' item.id %}" class="news-related-card">
+                                {% if item.photo %}
+                                    <img src="{{ item.photo.url }}" alt="{{ item.title }}">
+                                {% elif item.photo_url %}
+                                    <img src="{{ item.photo_url }}" alt="{{ item.title }}">
+                                {% endif %}
+                                <span>{{ item.title }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button class="news-related-nav" type="button" id="newsRelatedNext" aria-label="{{ i18n.home_next }}">›</button>
+            </div>
+        </section>
+        {% endif %}
+
+        <section id="comments" class="news-comments">
+            <h2 class="mb-3">{{ i18n.news_comments }}</h2>
+            {% if request.user.is_authenticated %}
+                <form method="post" class="mb-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="parent_id" value="">
+                    <textarea name="text" rows="3" class="form-control" placeholder="{{ i18n.news_comment_placeholder }}" required></textarea>
+                    <button type="submit" class="btn btn-primary mt-2">{{ i18n.news_send }}</button>
+                </form>
+            {% else %}
+                <p class="text-muted">
+                    {{ i18n.news_login_to_comment }}
+                    <a href="{% url 'users:login' %}?next={{ request.path }}">{{ i18n.login }}</a>.
+                </p>
+            {% endif %}
+
+            {% for comment in comment_roots %}
+                {% include "news/_comment_item.html" with comment=comment level=0 %}
+            {% empty %}
+                <p class="text-muted">{{ i18n.news_no_comments }}</p>
+            {% endfor %}
+        </section>
+    </div>
+</section>
+
+<script>
+    (function () {
+        const prev = document.getElementById("newsRelatedPrev");
+        const next = document.getElementById("newsRelatedNext");
+        const track = document.getElementById("newsRelatedTrack");
+        if (prev && next && track) {
+            const getStep = () => {
+                const card = track.querySelector(".news-related-card");
+                if (!card) return 0;
+                const styles = window.getComputedStyle(track);
+                return card.getBoundingClientRect().width + (parseFloat(styles.gap || "0") || 0);
+            };
+
+            let moving = false;
+            next.addEventListener("click", () => {
+                if (moving) return;
+                const step = getStep();
+                if (!step) return;
+                moving = true;
+                track.style.transition = "transform 300ms ease";
+                track.style.transform = `translateX(-${step}px)`;
+                track.addEventListener("transitionend", () => {
+                    track.style.transition = "none";
+                    track.appendChild(track.firstElementChild);
+                    track.style.transform = "translateX(0)";
+                    requestAnimationFrame(() => { moving = false; });
+                }, { once: true });
+            });
+
+            prev.addEventListener("click", () => {
+                if (moving) return;
+                const step = getStep();
+                if (!step) return;
+                moving = true;
+                track.style.transition = "none";
+                track.insertBefore(track.lastElementChild, track.firstElementChild);
+                track.style.transform = `translateX(-${step}px)`;
+                requestAnimationFrame(() => {
+                    track.style.transition = "transform 300ms ease";
+                    track.style.transform = "translateX(0)";
+                });
+                track.addEventListener("transitionend", () => {
+                    track.style.transition = "none";
+                    requestAnimationFrame(() => { moving = false; });
+                }, { once: true });
+            });
+        }
+
+        document.querySelectorAll("[data-reply-target]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const form = document.getElementById(btn.dataset.replyTarget);
+                if (!form) return;
+                form.hidden = !form.hidden;
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,25 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}{{ i18n.location_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <h1 class="text-center mb-5">{{ i18n.location_h1 }}</h1>
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="ratio ratio-16x9">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1898.9455505305273!2d73.00668527831706!3d40.92915699183862!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x38bd15cd079547a3%3A0xa678fb88c7ebc715!2z0JHQsNGA0L_RiyDQotC10LDRgtGAINC40LzQtdC90Lgg0JbQvtGA0L7QtdCy0J4!5e0!3m2!1sru!2skg!4v1772984785664!5m2!1sru!2skg" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h2>{{ i18n.location_address_title }}</h2>
+                <p>{{ i18n.location_address }}</p>
+                <h3>{{ i18n.location_contacts }}</h3>
+                <p>{{ i18n.location_phone }}: {{ i18n.location_phone_value }}</p>
+                <p>{{ i18n.location_worktime }}: {{ i18n.location_worktime_value }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

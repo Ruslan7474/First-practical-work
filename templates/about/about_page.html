@@ -1,0 +1,74 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}{{ i18n.about_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+<section class="about-hero">
+    <div class="container py-5">
+        <h1 class="about-title">{{ i18n.about_h1 }}</h1>
+        <p class="about-lead">{{ i18n.about_lead }}</p>
+    </div>
+</section>
+
+<section class="about-section">
+    <div class="container py-4">
+        <div class="about-grid">
+            <article class="about-card">
+                <h2>{{ i18n.about_mission }}</h2>
+                <div class="about-card-content js-about-content">
+                    {{ i18n.about_col_founder|safe }}
+                </div>
+                <button class="about-more-btn js-about-toggle" type="button" hidden>{{ i18n.about_read_more }}</button>
+            </article>
+
+            <article class="about-card">
+                <h2>{{ i18n.about_history }}</h2>
+                <div class="about-card-content js-about-content">
+                    {{ i18n.about_col_history|safe }}
+                </div>
+                <button class="about-more-btn js-about-toggle" type="button" hidden>{{ i18n.about_read_more }}</button>
+            </article>
+
+            <article class="about-card">
+                <h2>{{ i18n.about_team }}</h2>
+                <div class="about-card-content js-about-content">
+                    {{ i18n.about_col_team|safe }}
+                </div>
+                <button class="about-more-btn js-about-toggle" type="button" hidden>{{ i18n.about_read_more }}</button>
+            </article>
+
+            <article class="about-card">
+                <h2>{{ i18n.about_contacts }}</h2>
+                <div class="about-card-content js-about-content">
+                    {{ i18n.about_col_art_director|safe }}
+                </div>
+                <button class="about-more-btn js-about-toggle" type="button" hidden>{{ i18n.about_read_more }}</button>
+            </article>
+        </div>
+    </div>
+</section>
+<script>
+    (function () {
+        const cards = document.querySelectorAll(".about-card");
+        cards.forEach((card) => {
+            const content = card.querySelector(".js-about-content");
+            const button = card.querySelector(".js-about-toggle");
+            if (!content || !button) return;
+
+            content.classList.add("is-collapsed");
+            const needsToggle = content.scrollHeight > content.clientHeight + 8;
+            if (!needsToggle) {
+                content.classList.remove("is-collapsed");
+                return;
+            }
+
+            button.hidden = false;
+            button.addEventListener("click", () => {
+                const expanded = content.classList.toggle("is-expanded");
+                content.classList.toggle("is-collapsed", !expanded);
+                button.textContent = expanded ? "{{ i18n.about_read_less|escapejs }}" : "{{ i18n.about_read_more|escapejs }}";
+            });
+        });
+    })();
+</script>
+{% endblock %}
