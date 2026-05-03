@@ -1,0 +1,23 @@
+<article class="news-comment-item" style="margin-left: {{ level }}px;">
+    <div class="news-comment-head">
+        <strong>{{ comment.user.email|default:comment.user.username }}</strong>
+        <span>{{ comment.created_at|date:"d.m.Y H:i" }}</span>
+    </div>
+    <p class="news-comment-text">{{ comment.text|linebreaksbr }}</p>
+
+    {% if request.user.is_authenticated %}
+        <div class="news-comment-actions">
+            <button class="news-reply-btn" type="button" data-reply-target="reply-{{ comment.id }}">{{ i18n.news_reply }}</button>
+        </div>
+        <form method="post" class="news-reply-form" id="reply-{{ comment.id }}" hidden>
+            {% csrf_token %}
+            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+            <textarea name="text" rows="2" class="form-control" placeholder="{{ i18n.news_comment_placeholder }}" required></textarea>
+            <button type="submit" class="btn btn-sm btn-primary mt-2">{{ i18n.news_send }}</button>
+        </form>
+    {% endif %}
+
+    {% for child in comment.tree_children %}
+        {% include "news/_comment_item.html" with comment=child level=level|add:"26" %}
+    {% endfor %}
+</article>

@@ -1,0 +1,59 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}{{ i18n.news_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <h1 class="text-center mb-5">{{ i18n.news_h1 }}</h1>
+        {% if events %}
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="nav flex-column nav-pills" id="event-tabs" role="tablist" aria-orientation="vertical">
+                        {% for event in events %}
+                            {% with is_first=forloop.first %}
+                                <button class="nav-link {% if is_first %}active{% endif %} text-start"
+                                        id="tab-{{ event.id }}"
+                                        data-bs-toggle="pill"
+                                        data-bs-target="#pane-{{ event.id }}"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="pane-{{ event.id }}"
+                                        aria-selected="{{ is_first|yesno:'true,false' }}">
+                                    {{ event.title }}
+                                </button>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="tab-content" id="event-tabs-content">
+                        {% for event in events %}
+                            <div class="tab-pane fade{% if forloop.first %} show active{% endif %}" id="pane-{{ event.id }}" role="tabpanel" aria-labelledby="tab-{{ event.id }}">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4 mb-3 mb-md-0">
+                                        {% if event.photo %}
+                                            <img src="{{ event.photo.url }}" class="img-fluid rounded news-event-thumb" alt="{{ event.title }}">
+                                        {% elif event.photo_url %}
+                                            <img src="{{ event.photo_url }}" class="img-fluid rounded news-event-thumb" alt="{{ event.title }}">
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-8">
+                                        <h3>{{ event.title }}</h3>
+                                        <div class="event-text">
+                                            {{ event.text|striptags|truncatechars:260 }}
+                                        </div>
+                                        <a href="{% url 'news:news_detail' event.id %}" class="btn btn-primary mt-3">{{ i18n.news_read_more }}</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p class="text-center">{{ i18n.news_empty }}</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

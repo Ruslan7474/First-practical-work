@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ i18n.afisha_title }} | {{ i18n.site_title }}{% endblock %}
+
+{% block body_class %}page-afisha{% endblock %}
+
+{% block content %}
+<section class="afisha-page py-5">
+    <div class="container">
+        <div class="afisha-head">
+            <h1 class="afisha-title">{{ i18n.afisha_h1 }}</h1>
+        </div>
+        {% if has_items %}
+            {% for section in sections %}
+                {% if section.items %}
+                    <div class="afisha-shelf">
+                        <div class="afisha-shelf-head">
+                            <h2>{{ section.title }}</h2>
+                            <div class="afisha-shelf-nav">
+                                <button class="afisha-arrow" type="button" data-carousel-prev="{{ section.key }}" aria-label="Назад">&lsaquo;</button>
+                                <button class="afisha-arrow" type="button" data-carousel-next="{{ section.key }}" aria-label="Вперед">&rsaquo;</button>
+                            </div>
+                        </div>
+                        <div class="afisha-carousel" data-carousel="{{ section.key }}">
+                            <div class="afisha-track">
+                                {% for item in section.items %}
+                                    <a href="{% url 'play_detail' item.play_id %}" class="afisha-card{% if item.is_archived %} is-archive{% endif %}">
+                                        <div class="afisha-card-media">
+                                            {% if item.poster %}
+                                                <img src="{{ item.poster }}" alt="{{ item.title }}">
+                                            {% elif item.poster_url %}
+                                                <img src="{{ item.poster_url }}" alt="{{ item.title }}">
+                                            {% else %}
+                                                <div class="afisha-card-placeholder"></div>
+                                            {% endif %}
+                                            {% if not item.is_archived %}
+                                                <div class="afisha-card-price">{{ item.price }} сом</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="afisha-card-body">
+                                            <div class="afisha-card-title">{{ item.title }}</div>
+                                            <div class="afisha-card-date">
+                                                {% if item.is_archived %}
+                                                    {{ item.archive_label }}
+                                                {% else %}
+                                                    {{ item.datetime_label }}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <p class="text-center">{{ i18n.afisha_empty }}</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const carousels = document.querySelectorAll("[data-carousel]");
+
+        carousels.forEach((carousel) => {
+            const key = carousel.dataset.carousel;
+            const prev = document.querySelector(`[data-carousel-prev="${key}"]`);
+            const next = document.querySelector(`[data-carousel-next="${key}"]`);
+            const step = () => Math.max(carousel.clientWidth * 0.82, 260);
+
+            if (prev) {
+                prev.addEventListener("click", () => {
+                    carousel.scrollBy({ left: -step(), behavior: "smooth" });
+                });
+            }
+
+            if (next) {
+                next.addEventListener("click", () => {
+                    carousel.scrollBy({ left: step(), behavior: "smooth" });
+                });
+            }
+
+            let isDown = false;
+            let startX = 0;
+            let startScrollLeft = 0;
+
+            const getX = (event) => event.pageX ?? event.touches?.[0]?.pageX ?? 0;
+            const stopDragging = () => {
+                isDown = false;
+                carousel.classList.remove("is-dragging");
+            };
+
+            carousel.addEventListener("mousedown", (event) => {
+                isDown = true;
+                carousel.classList.add("is-dragging");
+                startX = getX(event);
+                startScrollLeft = carousel.scrollLeft;
+            });
+
+            carousel.addEventListener("mousemove", (event) => {
+                if (!isDown) {
+                    return;
+                }
+                carousel.scrollLeft = startScrollLeft - (getX(event) - startX);
+            });
+
+            carousel.addEventListener("mouseleave", stopDragging);
+            carousel.addEventListener("touchstart", (event) => {
+                isDown = true;
+                startX = getX(event);
+                startScrollLeft = carousel.scrollLeft;
+            }, { passive: true });
+            carousel.addEventListener("touchmove", (event) => {
+                if (!isDown) {
+                    return;
+                }
+                carousel.scrollLeft = startScrollLeft - (getX(event) - startX);
+            }, { passive: true });
+            carousel.addEventListener("touchend", stopDragging);
+            window.addEventListener("mouseup", stopDragging);
+        });
+    })();
+</script>
+{% endblock %}
